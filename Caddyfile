@@ -1,4 +1,4 @@
-{$DOMAIN} {
+nachtshop.store, www.nachtshop.store, {$DOMAIN} {
     reverse_proxy web:8080
     encode gzip zstd
 }
