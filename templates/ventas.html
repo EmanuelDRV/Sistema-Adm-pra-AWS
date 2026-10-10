@@ -1,0 +1,844 @@
+{% extends 'base.html' %}
+
+{% block title %}Ventas | StreamPanel{% endblock %}
+
+{% block content %}
+<!-- Tom Select JS v2.2.2 -->
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<style>
+    .ts-control, .ts-dropdown, .ts-dropdown-content {
+        background-color: #14171c !important;
+        color: white !important;
+        border-color: #35373C !important;
+    }
+</style>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <h2 class="fw-bold text-white mb-0">Gestión de Ventas</h2>
+    <button class="btn btn-success rounded-3 fw-bold" style="background-color: #23A559; border: none;" data-bs-toggle="modal" data-bs-target="#modalNuevaVenta">
+        <i class="bi bi-cart-plus-fill"></i> + Nueva Venta
+    </button>
+</div>
+
+<!-- Filtro Backend de ventas -->
+<form method="GET" action="/ventas" class="card mb-4" style="background-color: #0f1115; border: 1px solid #35373C;">
+    <div class="card-body p-2 d-flex gap-2">
+        <input type="text" name="q" value="{{ query }}" class="form-control bg-transparent border-0 text-white shadow-none" placeholder="Buscar por cliente, correo, plataforma, perfil, pin...">
+        <button type="submit" class="btn btn-primary d-none">Buscar</button>
+    </div>
+</form>
+
+<!-- ============================================================== -->
+<!-- ZONA 1: VENTAS ACTIVAS (FORMATO TABLA DESLIZABLE)              -->
+<!-- ============================================================== -->
+<div class="rounded-3 mb-4" style="border: 1px solid #35373C; overflow: hidden; background-color: #0f1115;">
+    <div style="overflow-x: auto; white-space: nowrap;">
+        <table class="table table-hover table-borderless align-middle mb-0">
+            <thead style="background-color: #0f1115; border-bottom: 1px solid #35373C;">
+                <tr>
+                    <th class="ps-4 py-3">Cliente</th>
+                    <th class="py-3">Servicio</th>
+                    <th class="py-3">Cuenta Base</th>
+                    <th class="py-3 text-center">Perfil / PIN</th>
+                    <th class="py-3 text-center">Fin</th>
+                    <th class="py-3">Precio</th>
+                    <th class="py-3 text-center">Estado</th>
+                    <th class="pe-4 py-3 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for venta in ventas_paginadas.items %}
+                <tr style="border-bottom: 1px solid #1c2128;{% if venta.cuenta.estado == 'Inactivo' %} background-color: rgba(229,181,49,0.07);{% endif %}">
+                    
+                    <!-- CLIENTE -->
+                    <td class="ps-4"{% if venta.cuenta.estado == 'Inactivo' %} style="border-left: 4px solid #E5B531;"{% endif %}>
+                        <span class="fw-bold d-block">{{ venta.cliente.nombre }}</span>
+                        <small class="text-muted"><i class="bi bi-headset"></i> {{ venta.vendedor.nombre }}</small>
+                    </td>
+                    
+                    <!-- SERVICIO -->
+                    <td>
+                        <span class="fw-bold d-block text-uppercase">{{ venta.cuenta.plataforma }}</span>
+                        <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ venta.cuenta.tipo }}</span>
+                    </td>
+                    
+                    <!-- CUENTA BASE -->
+                    <td>
+                        {% if venta.cuenta.estado == 'Inactivo' %}
+                        <span class="badge bg-warning text-dark mb-1" style="font-size: 0.6rem;" title="La cuenta base de esta venta está inactiva/vencida"><i class="bi bi-exclamation-triangle-fill"></i> Cuenta inactiva</span>
+                        {% endif %}
+                        <span class="text-muted small d-block">{{ venta.cuenta.correo }}</span>
+                    </td>
+                    
+                    <!-- PERFIL Y PIN -->
+                    <td class="text-center">
+                        <span class="text-info fw-bold d-block">{{ venta.nombre_perfil }}</span>
+                        {% if venta.pin %}
+                        <small class="text-white fw-bold bg-dark px-2 py-1 rounded-2" style="border: 1px solid #35373C;">
+                            PIN: {{ venta.pin }} <i class="bi bi-lock-fill text-warning"></i>
+                        </small>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- FIN -->
+                    <td class="text-center">
+                        <span class="text-light small">{{ venta.fecha_vencimiento.strftime('%d/%m/%Y') }}</span>
+                    </td>
+                    
+                    <!-- PRECIO -->
+                    <td>
+                        <span class="text-white small d-block">{{ venta.precio }}</span>
+                        <span class="text-muted small">{{ venta.moneda }}</span>
+                    </td>
+                    
+                    <!-- ESTADO -->
+                    <td class="text-center">
+                        {% set dias_restantes = (venta.fecha_vencimiento - current_time).days if current_time else 0 %}
+                        {% if dias_restantes < 0 %}
+                            <span class="badge bg-danger px-2 py-1">Vencida</span>
+                        {% elif dias_restantes <= 3 %}
+                            <span class="badge text-dark px-2 py-1" style="background-color: #FEE75C;">{{ dias_restantes }} días</span>
+                        {% else %}
+                            <span class="badge bg-success px-2 py-1" style="background-color: #23A559;">{{ dias_restantes }} días</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- ACCIONES (Botones compactos) -->
+                    <td class="pe-4">
+                        <div class="d-flex flex-column align-items-center gap-1">
+                            <div class="d-flex gap-1">
+                                <a href="/whatsapp/entrega/{{ venta.id }}" target="_blank" class="btn btn-sm rounded-2 p-2 border-0" style="background-color: rgba(35, 165, 89, 0.1); color: #23A559;" title="Entregar Credenciales"><i class="bi bi-whatsapp"></i></a>
+                                <button class="btn btn-sm rounded-2 p-2 border-0" style="background-color: rgba(88, 101, 242, 0.1); color: #5865F2;" data-bs-toggle="modal" data-bs-target="#modalEditarVenta{{ venta.id }}" title="Editar Datos"><i class="bi bi-pencil-square"></i></button>
+                                <button class="btn btn-sm rounded-2 p-2 border-0" style="background-color: rgba(0, 168, 252, 0.1); color: #00A8FC;" data-bs-toggle="modal" data-bs-target="#modalRenovar{{ venta.id }}" title="Renovar Perfil"><i class="bi bi-arrow-repeat"></i></button>
+                                <button class="btn btn-sm rounded-2 p-2 border-0" style="background-color: rgba(218, 55, 60, 0.1); color: #DA373C;" data-bs-toggle="modal" data-bs-target="#modalEliminarVenta{{ venta.id }}" title="Eliminar Venta"><i class="bi bi-trash-fill"></i></button>
+                            </div>
+                            <div class="d-flex gap-3 mt-1 w-100 justify-content-center">
+                                <a href="/whatsapp/recordatorio/{{ venta.id }}" target="_blank" class="text-muted small text-decoration-none"><i class="bi bi-bell"></i> Recordar</a>
+                                <a href="#" class="text-muted small text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalMudanza{{ venta.id }}"><i class="bi bi-tools"></i> Mudanza</a>
+                            </div>
+                        </div>
+
+                        <!-- MODALES OCULTOS DE LA FILA -->
+                        
+                        <!-- Modal para Renovar -->
+                        <div class="modal fade text-start text-wrap" id="modalRenovar{{ venta.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                                    <div class="modal-header border-bottom-0">
+                                        <h5 class="modal-title fw-bold"><i class="bi bi-arrow-repeat text-success"></i> Renovar Servicio</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form action="/ventas/renovar/{{ venta.id }}" method="POST">
+                                        <div class="modal-body">
+                                            <p class="text-muted small mb-3">Renovando el perfil <strong>{{ venta.nombre_perfil }}</strong> de <strong>{{ venta.cliente.nombre }}</strong>.</p>
+                                            
+                                            <div class="p-3 mb-3 rounded-3 border border-secondary" style="background-color: #0f1115;">
+                                                <label class="form-label text-white small fw-bold">¿Mantener en la misma cuenta base?</label>
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="radio" name="hacer_mudanza" id="mudanzaNo{{ venta.id }}" value="no" checked onchange="toggleMudanzaRenovacion('{{ venta.id }}')">
+                                                    <label class="form-check-label text-muted" for="mudanzaNo{{ venta.id }}">Sí, mantener en: {{ venta.cuenta.correo }}</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="hacer_mudanza" id="mudanzaSi{{ venta.id }}" value="si" onchange="toggleMudanzaRenovacion('{{ venta.id }}')">
+                                                    <label class="form-check-label text-muted" for="mudanzaSi{{ venta.id }}">No, cambiar a otra cuenta nueva</label>
+                                                </div>
+                                                <div class="mt-2" id="seccionNuevaCuenta{{ venta.id }}" style="display: none;">
+                                                    <select class="form-select text-white border-secondary small" style="background-color: #14171c;" name="nueva_cuenta_id" id="selectNuevaCuenta{{ venta.id }}">
+                                                        <option value="">Selecciona la nueva cuenta...</option>
+                                                        {% for cuenta in cuentas %}
+                                                        {% if cuenta.tipo == venta.cuenta.tipo %}
+                                                        <option value="{{ cuenta.id }}">{{ cuenta.plataforma }} - {{ cuenta.correo }} (Libres: {{ cuenta.perfiles_maximos - cuenta.perfiles_ocupados }})</option>
+                                                        {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-12 mb-3">
+                                                    <label class="form-label text-muted small">Días a sumar</label>
+                                                    <input type="number" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="dias" value="30" min="1" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label text-muted small">Nuevo Cobro</label>
+                                                    <input type="number" step="0.01" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="precio" required placeholder="Ej. 10">
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label text-muted small">Moneda</label>
+                                                    <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="moneda" required>
+                                                        <option value="BOB" {% if venta.moneda == 'BOB' %}selected{% endif %}>BOB</option>
+                                                        <option value="USDT" {% if venta.moneda == 'USDT' %}selected{% endif %}>USDT</option>
+                                                        <option value="ARS" {% if venta.moneda == 'ARS' %}selected{% endif %}>ARS</option>
+                                                        <option value="CLP" {% if venta.moneda == 'CLP' %}selected{% endif %}>CLP</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer border-top-0">
+                                            <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-success rounded-3 fw-bold" style="background-color: #23A559; border: none;">Confirmar Renovación</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Editar Venta -->
+                        <div class="modal fade text-start text-wrap" id="modalEditarVenta{{ venta.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                                    <div class="modal-header border-bottom-0">
+                                        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-info"></i> Editar Datos de Venta</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="/ventas/editar/{{ venta.id }}" method="POST">
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label text-muted small">Nombre del Perfil</label>
+                                                    <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="nombre_perfil" value="{{ venta.nombre_perfil }}" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label text-muted small">PIN</label>
+                                                    <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="pin" value="{{ venta.pin }}">
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label text-muted small">Monto Pagado</label>
+                                                    <input type="number" step="0.01" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="precio" value="{{ venta.precio }}" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label text-muted small">Moneda</label>
+                                                    <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="moneda" required>
+                                                        <option value="BOB" {% if venta.moneda == 'BOB' %}selected{% endif %}>BOB</option>
+                                                        <option value="USDT" {% if venta.moneda == 'USDT' %}selected{% endif %}>USDT</option>
+                                                        <option value="ARS" {% if venta.moneda == 'ARS' %}selected{% endif %}>ARS</option>
+                                                        <option value="CLP" {% if venta.moneda == 'CLP' %}selected{% endif %}>CLP</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-12 mb-3">
+                                                    <label class="form-label text-muted small">Fecha de Vencimiento</label>
+                                                    <input type="date" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="fecha_vencimiento" value="{{ venta.fecha_vencimiento.strftime('%Y-%m-%d') }}" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer border-top-0">
+                                            <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-info text-white rounded-3 fw-bold" style="background-color: #00A8FC; border: none;">Guardar Cambios</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Mudanza Independiente -->
+                        <div class="modal fade text-start text-wrap" id="modalMudanza{{ venta.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                                    <div class="modal-header border-bottom-0">
+                                        <h5 class="modal-title fw-bold"><i class="bi bi-tools text-warning"></i> Mudanza por Soporte</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="/ventas/mudanza/{{ venta.id }}" method="POST">
+                                        <div class="modal-body">
+                                            <div class="alert alert-warning border-0" style="background-color: #332D1D; color: #E5B531;">
+                                                <i class="bi bi-info-circle-fill"></i> Traslada a <strong>{{ venta.cliente.nombre }}</strong> a una nueva cuenta sin alterar su fecha de vencimiento ni montos pagados.
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label text-muted small">Mover del correo actual ({{ venta.cuenta.correo }}) a:</label>
+                                                <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="nueva_cuenta_id" required>
+                                                    <option value="">Selecciona la nueva cuenta de destino...</option>
+                                                    {% for cuenta in cuentas %}
+                                                    {% if cuenta.tipo == venta.cuenta.tipo and cuenta.id != venta.cuenta.id %}
+                                                    <option value="{{ cuenta.id }}">{{ cuenta.plataforma }} - {{ cuenta.correo }} (Libres: {{ cuenta.perfiles_maximos - cuenta.perfiles_ocupados }})</option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer border-top-0">
+                                            <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-warning text-dark rounded-3 fw-bold border-0">Realizar Mudanza</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Eliminar Venta -->
+                        <div class="modal fade text-start text-wrap" id="modalEliminarVenta{{ venta.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                                    <div class="modal-header border-bottom-0">
+                                        <h5 class="modal-title fw-bold text-danger"><i class="bi bi-trash-fill"></i> Eliminar Venta</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>¿Estás seguro de que deseas eliminar la venta de <strong>{{ venta.cliente.nombre }}</strong> en <strong>{{ venta.cuenta.plataforma }}</strong>?</p>
+                                        <ul class="small text-muted mt-1">
+                                            <li>El perfil <strong>{{ venta.nombre_perfil }}</strong> volverá a estar disponible en el inventario.</li>
+                                            <li>La transacción será eliminada permanentemente del sistema.</li>
+                                            <li><strong>Esta acción no se puede deshacer.</strong></li>
+                                        </ul>
+                                    </div>
+                                    <div class="modal-footer border-top-0">
+                                        <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                                        <form action="/ventas/eliminar/{{ venta.id }}" method="POST">
+                                            <button type="submit" class="btn btn-danger rounded-3 fw-bold border-0">Sí, Eliminar Venta</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-5">
+                        <i class="bi bi-shield-check fs-1 d-block mb-3"></i>
+                        No se encontraron ventas activas con los filtros actuales.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- PAGINACIÓN DE VENTAS ACTIVAS -->
+{% if ventas_paginadas.pages > 1 %}
+<div class="mt-4 mb-5 d-flex justify-content-center align-items-center gap-3">
+    {% if ventas_paginadas.has_prev %}
+        <a href="{{ url_for('vista_ventas', page=ventas_paginadas.prev_num, q=query) }}" class="btn btn-outline-light" style="background-color: #14171c; border: 1px solid #35373C;">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </a>
+    {% else %}
+        <button class="btn btn-outline-secondary disabled" style="background-color: #0f1115; border: 1px solid #35373C;">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </button>
+    {% endif %}
+    
+    <span class="text-muted fw-bold">Página {{ ventas_paginadas.page }} de {{ ventas_paginadas.pages }}</span>
+    
+    {% if ventas_paginadas.has_next %}
+        <a href="{{ url_for('vista_ventas', page=ventas_paginadas.next_num, q=query) }}" class="btn btn-outline-light" style="background-color: #14171c; border: 1px solid #35373C;">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </a>
+    {% else %}
+        <button class="btn btn-outline-secondary disabled" style="background-color: #0f1115; border: 1px solid #35373C;">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </button>
+    {% endif %}
+</div>
+{% endif %}
+
+
+<!-- ============================================================== -->
+<!-- ZONA 2: VENTAS INACTIVAS (CAÍDAS / AUTO-LIBERADAS)             -->
+<!-- ============================================================== -->
+{% if ventas_inactivas or query_inactiva %}
+<div class="mt-5 border-top border-secondary pt-4">
+    <button class="btn btn-outline-secondary w-100 text-start fw-bold p-3" type="button" data-bs-toggle="collapse" data-bs-target="#zonaInactivas">
+        <i class="bi bi-archive-fill me-2"></i> {% if query_inactiva %}Ventas Caídas / Liberadas (resultados: {{ ventas_inactivas|length }}){% else %}Ver Últimas Ventas Caídas / Liberadas (Disponibles para renovar){% endif %}
+    </button>
+
+    <form method="GET" action="/ventas" class="mt-3 d-flex gap-2">
+        <input type="text" name="qi" value="{{ query_inactiva }}" class="form-control bg-transparent border-0 text-white shadow-none" style="background-color: #0f1115; border: 1px solid #35373C !important;" placeholder="Buscar ventas caídas por cliente, correo, plataforma, perfil, pin...">
+        <button type="submit" class="btn btn-primary d-none">Buscar</button>
+        {% if query_inactiva %}
+        <a href="/ventas" class="btn btn-sm rounded-3 text-muted border-0 align-self-center" style="white-space: nowrap;" title="Limpiar búsqueda"><i class="bi bi-x-lg"></i> Limpiar</a>
+        {% endif %}
+    </form>
+
+    <div class="collapse mt-3 {% if query_inactiva %}show{% endif %}" id="zonaInactivas">
+        <div class="rounded-3 mb-4" style="background-color: #0f1115; border: 1px solid #35373C; opacity: 0.85; overflow: hidden;">
+            <div style="overflow-x: auto; white-space: nowrap;">
+                <table class="table table-hover table-borderless align-middle mb-0">
+                    <tbody>
+                        {% if not ventas_inactivas %}
+                        <tr>
+                            <td class="ps-4 py-5 text-center text-muted">
+                                <i class="bi bi-search fs-1 d-block mb-3"></i>
+                                No se encontraron ventas caídas{% if query_inactiva %} para "{{ query_inactiva }}"{% endif %}.
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% for venta in ventas_inactivas %}
+                        <tr style="border-bottom: 1px solid #1c2128;{% if venta.cuenta.estado == 'Inactivo' %} background-color: rgba(229,181,49,0.07);{% endif %}">
+                            <td class="ps-4 py-3"{% if venta.cuenta.estado == 'Inactivo' %} style="border-left: 4px solid #E5B531;"{% endif %}>
+                                <h6 class="fw-bold text-muted mb-1 text-decoration-line-through">{{ venta.cuenta.plataforma }}</h6>
+                                <div class="text-muted small">Base: {{ venta.cuenta.correo }}
+                                    {% if venta.cuenta.estado == 'Inactivo' %}
+                                    <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;" title="La cuenta base está inactiva/vencida"><i class="bi bi-exclamation-triangle-fill"></i> Cuenta inactiva</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-muted small">Perfil liberado: <span class="text-white">{{ venta.nombre_perfil }}</span></div>
+                            </td>
+                            <td class="py-3 text-center">
+                                <div class="text-white fw-bold mb-1">{{ venta.cliente.nombre }}</div>
+                                <span class="badge bg-danger"><i class="bi bi-door-closed-fill"></i> Inactiva / Liberada</span>
+                            </td>
+                            <td class="pe-4 py-3 text-end">
+                                <button class="btn btn-sm rounded-3 fw-bold border-0" style="background-color: rgba(35, 165, 89, 0.1); color: #23A559;" data-bs-toggle="modal" data-bs-target="#modalRenovarInactiva{{ venta.id }}"><i class="bi bi-arrow-clockwise"></i> Reactivar / Renovar</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Modales fuera de la tabla (HTML válido para Bootstrap) -->
+        {% for venta in ventas_inactivas %}
+        <div class="modal fade text-start text-wrap" id="modalRenovarInactiva{{ venta.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                    <div class="modal-header border-bottom-0">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-arrow-repeat text-success"></i> Reactivar y Renovar</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="/ventas/renovar/{{ venta.id }}" method="POST">
+                        <div class="modal-body">
+                            <p class="text-muted small mb-3">Reactivando a <strong>{{ venta.cliente.nombre }}</strong>.</p>
+                            
+                            <div class="p-3 mb-3 rounded-3 border border-secondary" style="background-color: #0f1115;">
+                                <label class="form-label text-white small fw-bold">Opciones de Cupo</label>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="hacer_mudanza" id="mudanzaNoInac{{ venta.id }}" value="no" checked onchange="toggleMudanzaRenovacion('Inac{{ venta.id }}')">
+                                    <label class="form-check-label text-muted" for="mudanzaNoInac{{ venta.id }}">Tomar espacio en: {{ venta.cuenta.correo }}</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="hacer_mudanza" id="mudanzaSiInac{{ venta.id }}" value="si" onchange="toggleMudanzaRenovacion('Inac{{ venta.id }}')">
+                                    <label class="form-check-label text-muted" for="mudanzaSiInac{{ venta.id }}">Hacer mudanza a otra cuenta</label>
+                                </div>
+                                <div class="mt-2" id="seccionNuevaCuentaInac{{ venta.id }}" style="display: none;">
+                                    <select class="form-select text-white border-secondary small" style="background-color: #14171c;" name="nueva_cuenta_id" id="selectNuevaCuentaInac{{ venta.id }}">
+                                        <option value="">Selecciona la nueva cuenta...</option>
+                                        {% for cuenta in cuentas %}
+                                        {% if cuenta.tipo == venta.cuenta.tipo %}
+                                        <option value="{{ cuenta.id }}">{{ cuenta.plataforma }} - {{ cuenta.correo }} (Libres: {{ cuenta.perfiles_maximos - cuenta.perfiles_ocupados }})</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label text-muted small">Días a sumar</label>
+                                    <input type="number" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="dias" value="30" min="1" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted small">Nuevo Cobro</label>
+                                    <input type="number" step="0.01" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="precio" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-muted small">Moneda</label>
+                                    <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="moneda" required>
+                                        <option value="BOB" {% if venta.moneda == 'BOB' %}selected{% endif %}>BOB</option>
+                                        <option value="USDT" {% if venta.moneda == 'USDT' %}selected{% endif %}>USDT</option>
+                                        <option value="ARS" {% if venta.moneda == 'ARS' %}selected{% endif %}>ARS</option>
+                                        <option value="CLP" {% if venta.moneda == 'CLP' %}selected{% endif %}>CLP</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0">
+                            <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-success rounded-3 fw-bold" style="background-color: #23A559; border: none;">Reactivar Perfil</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ============================================================== -->
+<!-- MODAL PRINCIPAL: NUEVA VENTA                                   -->
+<!-- ============================================================== -->
+<div class="modal fade text-start text-wrap" id="modalNuevaVenta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-cart-plus text-success"></i> Registrar Nueva Venta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/ventas/nueva" method="POST" id="formNuevaVenta" onsubmit="return validarFormularioVenta()">
+                <div class="modal-body">
+                    <div id="msgErrorVenta" class="alert alert-danger py-2 d-none"></div>
+                    <!-- BOTONES PARA ELEGIR TIPO DE CLIENTE -->
+                    <div class="mb-4 pb-3 border-bottom border-secondary d-flex justify-content-center gap-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_cliente" id="radioExistente" value="existente" checked onchange="toggleTipoCliente()">
+                            <label class="form-check-label text-white fw-bold" for="radioExistente">
+                                <i class="bi bi-person-check-fill text-primary"></i> Cliente Registrado
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_cliente" id="radioNuevo" value="nuevo" onchange="toggleTipoCliente()">
+                            <label class="form-check-label text-white fw-bold" for="radioNuevo">
+                                <i class="bi bi-person-plus-fill text-success"></i> Cliente Nuevo
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- SECCIÓN A: BUSCADOR PREDICTIVO VÍA API -->
+                        <div class="col-md-12 mb-3" id="seccionExistente">
+                            <label class="form-label text-muted small">Buscar Cliente</label>
+                            <div class="position-relative">
+                                <input type="text" id="buscadorClientePredictivo" class="form-control text-white border-secondary" style="background-color: #0f1115;" placeholder="Escribe el nombre o número para buscar..." autocomplete="off">
+                                <input type="hidden" name="cliente_id" id="clienteIdOculto">
+                                
+                                <div id="cajaResultados" class="list-group position-absolute w-100" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto; background-color: #0f1115; border: 1px solid #35373C;">
+                                    <!-- Los resultados de la API aparecerán aquí -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN B: CLIENTE NUEVO -->
+                        <div class="col-md-12 mb-3" id="seccionNuevo" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label text-muted small">Nombre del Nuevo Cliente</label>
+                                    <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="nombre_nuevo" id="inputNombreNuevo" placeholder="Ej. Carlos Mendoza">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small">Número de WhatsApp</label>
+                                    <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="telefono_nuevo" id="inputTelefonoNuevo" placeholder="Ej. +54 9 381 523-9365">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12"><hr class="border-secondary my-2"></div>
+
+                        <!-- Vendedor y Fecha (compartidos) -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small">Vendedor Asignado</label>
+                            <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="vendedor_id" required>
+                                {% for vendedor in vendedores %}
+                                <option value="{{ vendedor.id }}">{{ vendedor.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small">Fecha de Inicio</label>
+                            <input type="date" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="fecha_inicio" id="inputFechaInicio" required>
+                        </div>
+
+                        <div class="col-12"><hr class="border-secondary my-2"></div>
+
+                        <!-- PLATAFORMAS MÚLTIPLES -->
+                        <div class="col-12 mb-2">
+                            <label class="form-label text-white fw-bold small"><i class="bi bi-layers-fill text-info"></i> Plataformas a vender</label>
+                        </div>
+                        
+                        <div id="ventasMultiContainer" class="col-12">
+                            <!-- Primera fila visible -->
+                            <div class="venta-fila">
+                                <div class="row g-3 mb-3 p-3 rounded-3" style="background-color: #0f1115; border: 1px solid #35373C;">
+                                    <div class="col-md-4">
+                                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Categoría</label>
+                                        <select class="form-select text-white border-secondary form-select-sm select-categoria" style="background-color: #14171c;" onchange="actualizarCuentas(this.closest('.venta-fila'))">
+                                            <option value="">Elige...</option>
+                                            <option value="Streaming">Streaming</option>
+                                            <option value="IPTV 1">IPTV 1</option>
+                                            <option value="IPTV 2">IPTV 2</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Cuenta</label>
+                                        <select name="cuenta_id[]" class="form-select text-white border-secondary form-select-sm select-cuenta" style="background-color: #14171c;" required disabled>
+                                            <option value="">Primero elige una categoría...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Perfil</label>
+                                        <input type="text" name="nombre_perfil[]" class="form-control text-white border-secondary form-control-sm" style="background-color: #14171c;">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label text-muted small" style="font-size: 0.65rem;">PIN</label>
+                                        <input type="text" name="pin[]" class="form-control text-white border-secondary form-control-sm" style="background-color: #14171c;">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Días</label>
+                                        <input type="number" name="dias[]" class="form-control text-white border-secondary form-control-sm" style="background-color: #14171c;" value="30" min="1">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Precio</label>
+                                        <input type="number" step="0.01" name="precio[]" class="form-control text-white border-secondary form-control-sm" style="background-color: #14171c;">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Moneda</label>
+                                        <select name="moneda[]" class="form-select text-white border-secondary form-select-sm" style="background-color: #14171c;">
+                                            <option value="BOB">BOB</option>
+                                            <option value="USDT">USDT</option>
+                                            <option value="ARS">ARS</option>
+                                            <option value="CLP">CLP</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-info border-0" onclick="agregarFilaVenta()">
+                                <i class="bi bi-plus-circle"></i> Agregar otra plataforma
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success rounded-3 fw-bold" style="background-color: #23A559; border: none;">Confirmar Venta</button>
+                </div>
+            </form>
+
+            <!-- Plantilla oculta de fila (fuera del form para no enviar sus inputs vacios) -->
+            <div class="venta-fila" id="ventaFilaTemplate" style="display: none;">
+                <div class="row g-3 mb-3 p-3 rounded-3" style="background-color: #0f1115; border: 1px solid #35373C;">
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Categoría</label>
+                        <select class="form-select text-white border-secondary form-select-sm select-categoria" style="background-color: #14171c;" onchange="actualizarCuentas(this.closest('.venta-fila'))">
+                            <option value="">Elige...</option>
+                            <option value="Streaming">Streaming</option>
+                            <option value="IPTV 1">IPTV 1</option>
+                            <option value="IPTV 2">IPTV 2</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Cuenta</label>
+                        <select name="cuenta_id[]" class="form-select text-white border-secondary form-select-sm select-cuenta" style="background-color: #14171c;" required disabled>
+                            <option value="">Primero elige una categoría...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Perfil</label>
+                        <input type="text" name="nombre_perfil[]" class="form-control text-white border-secondary form-control-sm" style="background-color: #14171c;">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-muted small" style="font-size: 0.65rem;">PIN</label>
+                        <input type="text" name="pin[]" class="form-control text-white border-secondary form-control-sm" style="background-color: #14171c;">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Días</label>
+                        <input type="number" name="dias[]" class="form-control text-white border-secondary form-control-sm" style="background-color: #14171c;" value="30" min="1">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Precio</label>
+                        <input type="number" step="0.01" name="precio[]" class="form-control text-white border-secondary form-control-sm" style="background-color: #14171c;">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-muted small" style="font-size: 0.65rem;">Moneda</label>
+                        <select name="moneda[]" class="form-select text-white border-secondary form-select-sm" style="background-color: #14171c;">
+                            <option value="BOB">BOB</option>
+                            <option value="USDT">USDT</option>
+                            <option value="ARS">ARS</option>
+                            <option value="CLP">CLP</option>
+                        </select>
+                    </div>
+                    <div class="col-12 text-end mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('.venta-fila').remove()"><i class="bi bi-x-circle"></i> Quitar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LÓGICA DE JAVASCRIPT INTEGRADA -->
+<script>
+    function toggleTipoCliente() {
+        let esNuevo = document.getElementById('radioNuevo').checked;
+        document.getElementById('seccionExistente').style.display = esNuevo ? 'none' : 'block';
+        document.getElementById('seccionNuevo').style.display = esNuevo ? 'block' : 'none';
+
+        document.getElementById('inputNombreNuevo').required = esNuevo;
+        document.getElementById('inputTelefonoNuevo').required = esNuevo;
+    }
+
+    // BUSCADOR PREDICTIVO OPTIMIZADO VÍA FETCH (API)
+    const buscador = document.getElementById('buscadorClientePredictivo');
+    const cajaResultados = document.getElementById('cajaResultados');
+    const inputOculto = document.getElementById('clienteIdOculto');
+
+    if (buscador) {
+        buscador.addEventListener('input', function() {
+            let texto = this.value.toLowerCase().trim();
+            // Solo busca en la BD si escribes 2 letras o más
+            if (texto.length < 2) {
+                cajaResultados.style.display = 'none';
+                return;
+            }
+            
+            // Llama a la base de datos en segundo plano
+            fetch(`/api/buscar_clientes?q=${encodeURIComponent(texto)}`)
+                .then(response => response.json())
+                .then(data => {
+                    cajaResultados.innerHTML = ''; // Limpiamos la caja
+                    if(data.resultados.length > 0) {
+                        cajaResultados.style.display = 'block';
+                        data.resultados.forEach(c => {
+                            let btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'list-group-item list-group-item-action text-white border-secondary item-sugerencia';
+                            btn.style.backgroundColor = '#0f1115';
+                            btn.innerHTML = `<strong>${c.nombre}</strong> <small class="text-muted">(${c.telefono})</small>`;
+                            
+                            // Cuando le das clic a un resultado
+                            btn.onclick = function() {
+                                buscador.value = c.nombre;
+                                inputOculto.value = c.id;
+                                cajaResultados.style.display = 'none';
+                                rellenarPerfilesVacios(c.nombre);
+                            };
+                            cajaResultados.appendChild(btn);
+                        });
+                    } else {
+                        cajaResultados.style.display = 'none';
+                    }
+                });
+        });
+
+        // Ocultar caja al hacer clic afuera
+        document.addEventListener('click', function(e) {
+            if (!buscador.contains(e.target) && !cajaResultados.contains(e.target)) {
+                cajaResultados.style.display = 'none';
+            }
+        });
+    }
+
+    // Inventario global de cuentas disponibles (solo con slots libres)
+    const inventarioCuentas = [
+        {% for c in cuentas %}
+        { id: {{ c.id }}, tipo: "{{ c.tipo }}", texto: "{{ c.plataforma }} - {{ c.correo }} ({{ c.perfiles_maximos - c.perfiles_ocupados }} libres)" },
+        {% endfor %}
+    ];
+
+    function inicializarBuscador(selectElement) {
+        if (selectElement.tomselect) return selectElement.tomselect;
+        const instancia = new TomSelect(selectElement, {
+            valueField: 'id',
+            labelField: 'texto',
+            searchField: 'texto',
+            placeholder: 'Primero elige una categoría...',
+            create: false,
+            allowEmptyOption: false
+        });
+        selectElement.tomselect = instancia;
+        return instancia;
+    }
+
+    function actualizarCuentas(fila) {
+        const selectCategoria = fila.querySelector('.select-categoria');
+        const selectCuentas = fila.querySelector('.select-cuenta');
+        const categoria = selectCategoria.value;
+        const ts = inicializarBuscador(selectCuentas);
+
+        ts.clear();
+        ts.clearOptions();
+
+        if (categoria === "") {
+            ts.disable();
+        } else {
+            inventarioCuentas.filter(c => c.tipo === categoria).forEach(c => ts.addOption(c));
+            ts.enable();
+            ts.refreshOptions(false);
+        }
+    }
+
+    // Si el campo "Perfil" está vacío, lo rellena con el nombre del cliente
+    function rellenarPerfilesVacios(nombre) {
+        document.querySelectorAll('input[name="nombre_perfil[]"]').forEach(inp => {
+            if (!inp.value.trim()) {
+                inp.value = nombre;
+            }
+        });
+    }
+
+    // Cliente nuevo: rellena los perfiles vacíos con su nombre
+    const inputNombreNuevo = document.getElementById('inputNombreNuevo');
+    if (inputNombreNuevo) {
+        inputNombreNuevo.addEventListener('blur', function() {
+            if (this.value.trim()) {
+                rellenarPerfilesVacios(this.value.trim());
+            }
+        });
+    }
+
+    function validarFormularioVenta() {
+        const msg = document.getElementById('msgErrorVenta');
+        msg.classList.add('d-none');
+        const esNuevo = document.getElementById('radioNuevo').checked;
+
+        if (!esNuevo && !document.getElementById('clienteIdOculto').value) {
+            msg.textContent = 'Escribe el nombre del cliente y selecciona un resultado de la lista.';
+            msg.classList.remove('d-none');
+            document.getElementById('buscadorClientePredictivo').focus();
+            return false;
+        }
+
+        const filas = document.querySelectorAll('#ventasMultiContainer .venta-fila');
+        for (const fila of filas) {
+            const selectCuenta = fila.querySelector('.select-cuenta');
+            if (selectCuenta.disabled || !selectCuenta.value) continue;
+
+            const perfil = fila.querySelector('input[name="nombre_perfil[]"]');
+            const precio = fila.querySelector('input[name="precio[]"]');
+            if (!perfil.value.trim()) {
+                msg.textContent = 'Falta el nombre del perfil en una de las plataformas seleccionadas.';
+                msg.classList.remove('d-none');
+                perfil.focus();
+                return false;
+            }
+            if (!precio.value) {
+                msg.textContent = 'Falta el precio en una de las plataformas seleccionadas.';
+                msg.classList.remove('d-none');
+                precio.focus();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function agregarFilaVenta() {
+        const template = document.getElementById('ventaFilaTemplate');
+        const container = document.getElementById('ventasMultiContainer');
+        const clone = template.cloneNode(true);
+        clone.id = '';
+        clone.style.display = '';
+        // Limpiar rastros de Tom Select en el clon (por si acaso)
+        const wrapperViejo = clone.querySelector('.ts-wrapper');
+        if (wrapperViejo) wrapperViejo.remove();
+        clone.querySelectorAll('.select-cuenta').forEach(sel => {
+            sel.classList.remove('tomselected', 'ts-hidden-accessible');
+            sel.disabled = true;
+        });
+        // Limpiar valores del clone
+        const inputs = clone.querySelectorAll('input, select');
+        inputs.forEach(inp => {
+            if (inp.type !== 'hidden') {
+                inp.value = '';
+            }
+            if (inp.name === 'dias[]') inp.value = '30';
+        });
+        container.appendChild(clone);
+    }
+
+    function toggleMudanzaRenovacion(ventaId) {
+        let hacerMudanza = document.getElementById('mudanzaSi' + ventaId).checked;
+        let seccionCuenta = document.getElementById('seccionNuevaCuenta' + ventaId);
+        let selectCuenta = document.getElementById('selectNuevaCuenta' + ventaId);
+        
+        seccionCuenta.style.display = hacerMudanza ? 'block' : 'none';
+        selectCuenta.required = hacerMudanza;
+    }
+
+    const inputFecha = document.getElementById('inputFechaInicio');
+    if(inputFecha) {
+        inputFecha.valueAsDate = new Date();
+    }
+</script>
+{% endblock %}

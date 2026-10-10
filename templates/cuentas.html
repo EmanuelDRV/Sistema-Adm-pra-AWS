@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+
+{% block title %}Cuentas | StreamPanel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-white mb-0">Gestión de Cuentas y Stock</h2>
+    <button class="btn fw-bold text-white" style="background-color: #23A559; border: none;" data-bs-toggle="modal" data-bs-target="#modalNuevaCuenta">
+        <i class="bi bi-plus-circle-fill me-1"></i> Nueva Cuenta
+    </button>
+</div>
+
+<!-- Modal: Registrar Nueva Cuenta -->
+<div class="modal fade text-start" id="modalNuevaCuenta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle-fill me-2" style="color: #23A559;"></i>Registrar Nueva Cuenta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/cuentas/nueva" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Categoría</label>
+                        <select class="form-select text-white border-secondary" style="background-color: #14171c;" name="tipo" required>
+                            <option value="Streaming">Streaming (Netflix, Disney...)</option>
+                            <option value="IPTV 1">IPTV 1</option>
+                            <option value="IPTV 2">IPTV 2</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Plataforma (Ej. Netflix)</label>
+                        <input type="text" class="form-control text-white border-secondary" style="background-color: #14171c;" name="plataforma" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Correo o Usuario</label>
+                        <input type="text" class="form-control text-white border-secondary" style="background-color: #14171c;" name="correo_o_usuario" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Contraseña</label>
+                        <input type="text" class="form-control text-white border-secondary" style="background-color: #14171c;" name="contrasena" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Perfiles Máximos (Slots)</label>
+                        <input type="number" class="form-control text-white border-secondary" style="background-color: #14171c;" name="perfiles_maximos" value="1" min="1" required>
+                    </div>
+                    
+                    <!-- Quién compró la cuenta -->
+                    <div class="row mb-3 mt-3 pt-3 border-top border-secondary">
+                        <div class="col-6">
+                            <label class="form-label text-muted small">Vendedor que compró</label>
+                            <select class="form-select text-white border-secondary" style="background-color: #14171c;" name="vendedor_id">
+                                <option value="">Selecciona...</option>
+                                {% for v in vendedores %}
+                                <option value="{{ v.id }}">{{ v.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted small">Días de Duración</label>
+                            <input type="number" class="form-control text-white border-secondary" style="background-color: #14171c;" name="dias_duracion" value="30" min="1" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Sección de Inversión -->
+                    <div class="row mb-3 pt-3 border-top border-secondary">
+                        <div class="col-6">
+                            <label class="form-label text-muted small">Costo (Inversión)</label>
+                            <input type="number" step="0.01" class="form-control text-white border-secondary" style="background-color: #14171c;" name="costo" placeholder="0.00" value="0" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted small">Moneda</label>
+                            <select class="form-select text-white border-secondary" style="background-color: #14171c;" name="moneda_costo">
+                                <option value="USDT">USDT</option>
+                                <option value="BOB">BOB</option>
+                                <option value="ARS">ARS</option>
+                                <option value="CLP">CLP</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn fw-bold text-white rounded-3" style="background-color: #23A559; border: none;">Guardar en Inventario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Inventario Actual -->
+    <div class="col-12">
+        <div class="card mb-4" style="background-color: #0f1115; border: 1px solid #35373C;">
+            <div class="card-header pt-3 pb-2 border-bottom-0">
+                <h6 class="fw-bold mb-0"><i class="bi bi-hdd-stack-fill me-2" style="color: #5865F2;"></i>Inventario Actual</h6>
+            </div>
+            <div class="p-2 d-flex gap-2" style="border-bottom: 1px solid #35373C;">
+                <form method="GET" action="/cuentas" class="d-flex flex-grow-1 gap-2 mb-0">
+                    <input type="text" name="q" value="{{ query }}" class="form-control bg-transparent border-0 text-white shadow-none" placeholder="Buscar por correo, usuario o plataforma...">
+                    <button type="submit" class="btn btn-primary d-none">Buscar</button>
+                </form>
+                {% if query %}
+                <a href="/cuentas" class="btn btn-sm rounded-3 text-muted border-0 align-self-center" style="white-space: nowrap;" title="Limpiar búsqueda"><i class="bi bi-x-lg"></i> Limpiar</a>
+                {% endif %}
+            </div>
+            <div style="overflow-x: auto; max-height: 80vh;">
+                <table class="table table-hover table-borderless align-middle mb-0">
+                    <thead style="background-color: #0f1115; position: sticky; top: 0; z-index: 1;">
+                        <tr>
+                            <th class="ps-4 text-muted small">Plataforma</th>
+                            <th class="text-muted small">Credencial</th>
+                            <th class="text-muted small">Comprada por</th>
+                            <th class="text-muted small">Inversión</th>
+                            <th class="text-muted small">Ocupación</th>
+                            <th class="text-muted small">Vence / Renovación</th>
+                            <th class="pe-4 text-end text-muted small">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if not cuentas %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-5">
+                                <i class="bi bi-search fs-1 d-block mb-3"></i>
+                                No se encontraron cuentas{% if query %} para "{{ query }}"{% endif %}.
+                            </td>
+                        </tr>
+                        {% endif %}
+                        <!-- MAGIA DE JINJA: Agrupamos las cuentas por Categoría (tipo) -->
+                        {% for tipo_cuenta, lista_cuentas in cuentas|groupby('tipo') %}
+                        
+                        <!-- Fila separadora de Categoría -->
+                        <tr style="background-color: #0f1115; border-top: 1px solid #35373C; border-bottom: 1px solid #35373C;">
+                            <td colspan="7" class="ps-4 py-2">
+                                <span class="text-info fw-bold text-uppercase" style="letter-spacing: 1px; font-size: 0.8rem;">
+                                    <i class="bi bi-collection-fill me-2"></i> SECCIÓN: {{ tipo_cuenta }}
+                                </span>
+                            </td>
+                        </tr>
+
+                        <!-- Iteramos las cuentas de ESTA categoría (Ordenadas Activas primero) -->
+                        {% for cuenta in lista_cuentas|sort(attribute='estado') %}
+                        <tr class="{% if cuenta.estado == 'Inactivo' %}opacity-50{% endif %}">
+                            <td class="ps-4">
+                                <span class="fw-bold d-block {% if cuenta.estado == 'Inactivo' %}text-decoration-line-through text-muted{% endif %}">{{ cuenta.plataforma }}</span>
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <form action="/cuentas/cambiar_estado/{{ cuenta.id }}" method="POST" class="mb-0">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="switchCuenta{{ cuenta.id }}" name="estado" value="Activo"
+                                                   {% if cuenta.estado == 'Activo' %}checked{% endif %}
+                                                   onchange="this.form.submit()" style="cursor: pointer;">
+                                        </div>
+                                    </form>
+                                    {% if cuenta.estado == 'Activo' %}
+                                    <span class="badge bg-success" style="font-size: 0.65rem;">Activa</span>
+                                    {% else %}
+                                    <span class="badge bg-danger" style="font-size: 0.65rem;">Inactiva</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="d-block small">{{ cuenta.correo }}</span>
+                                <span class="text-muted small">Pass: {{ cuenta.contrasena }}</span>
+                            </td>
+                            <td>
+                                {% if cuenta.comprador %}
+                                <span class="small fw-bold text-info">{{ cuenta.comprador.nombre }}</span>
+                                {% else %}
+                                <span class="small text-muted">—</span>
+                                {% endif %}
+                                {% if cuenta.fecha_compra %}
+                                <br><small class="text-muted" style="font-size: 0.65rem;">{{ cuenta.fecha_compra.strftime('%d/%m/%Y') }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="fw-bold text-danger small">{{ cuenta.costo }} {{ cuenta.moneda_costo }}</span>
+                                <br><small class="text-muted" style="font-size: 0.65rem;">{{ cuenta.dias_duracion }} días</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="small me-2">{{ cuenta.perfiles_ocupados }} / {{ cuenta.perfiles_maximos }}</span>
+                                    <div class="progress" style="height: 6px; width: 50px; background-color: #35373C;">
+                                        <div class="progress-bar {% if cuenta.perfiles_ocupados == cuenta.perfiles_maximos %}bg-danger{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ (cuenta.perfiles_ocupados / cuenta.perfiles_maximos) * 100 }}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if cuenta.fecha_vencimiento_cuenta %}
+                                <span class="small text-warning fw-bold d-block">{{ cuenta.fecha_vencimiento_cuenta.strftime('%d/%m/%Y') }}</span>
+                                {% if cuenta.renovador %}
+                                <small class="text-muted" style="font-size: 0.65rem;">Renovó: {{ cuenta.renovador.nombre }}</small>
+                                {% endif %}
+                                {% else %}
+                                <span class="small text-muted">Sin fecha</span>
+                                {% endif %}
+                            </td>
+                            <td class="pe-4 text-end">
+                                <!-- Botón que abre el modal de edición -->
+                                <button class="btn btn-sm rounded-2 p-2 border-0" style="background-color: rgba(88, 101, 242, 0.1); color: #5865F2;" data-bs-toggle="modal" data-bs-target="#modalEditarCuenta{{ cuenta.id }}" title="Editar">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </button>
+                                <!-- Botón para renovar cuenta -->
+                                <button class="btn btn-sm rounded-2 p-2 border-0 ms-1" style="background-color: rgba(35, 165, 89, 0.1); color: #23A559;" data-bs-toggle="modal" data-bs-target="#modalRenovarCuenta{{ cuenta.id }}" title="Renovar Cuenta">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                                <!-- Botón que abre el modal de eliminación -->
+                                <button class="btn btn-sm rounded-2 p-2 border-0 ms-1" style="background-color: rgba(218, 55, 60, 0.1); color: #DA373C;" data-bs-toggle="modal" data-bs-target="#modalEliminarCuenta{{ cuenta.id }}" title="Eliminar">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                            </td>
+                            <!-- MODALES OCULTOS DE LA FILA (dentro del <td> para HTML válido) -->
+
+                            <!-- Modal Editar Cuenta -->
+                            <div class="modal fade text-start" id="modalEditarCuenta{{ cuenta.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                                        <div class="modal-header border-bottom-0">
+                                            <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-info"></i> Editar Cuenta</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form action="/cuentas/editar/{{ cuenta.id }}" method="POST">
+                                            <div class="modal-body">
+                                                <!-- NUEVO: Selector de Estado -->
+                                                <div class="mb-3 p-3 rounded-3" style="background-color: #0f1115; border: 1px solid #35373C;">
+                                                    <label class="form-label text-white fw-bold small"><i class="bi bi-activity"></i> Estado Operativo</label>
+                                                    <select class="form-select text-white border-secondary" style="background-color: #14171c;" name="estado" required>
+                                                        <option value="Activo" {% if cuenta.estado == 'Activo' %}selected{% endif %}>🟢 Activa (Disponible para vender)</option>
+                                                        <option value="Inactivo" {% if cuenta.estado == 'Inactivo' %}selected{% endif %}>🔴 Inactiva (Cuenta Caída / Suspendida)</option>
+                                                    </select>
+                                                    <small class="text-muted mt-2 d-block" style="font-size: 0.7rem;">Si la marcas Inactiva, sus cupos desaparecerán del Dashboard y de tu inventario de ventas para evitar errores.</small>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small">Correo o Usuario</label>
+                                                    <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="correo_o_usuario" value="{{ cuenta.correo }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small">Contraseña</label>
+                                                    <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="contrasena" value="{{ cuenta.contrasena }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small">Perfiles Máximos</label>
+                                                    <input type="number" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="perfiles_maximos" value="{{ cuenta.perfiles_maximos }}" min="{{ cuenta.perfiles_ocupados }}" required>
+                                                </div>
+                                                <div class="row g-2 mb-3">
+                                                    <div class="col-6">
+                                                        <label class="form-label text-muted small">Comprada por</label>
+                                                        <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="vendedor_id">
+                                                            <option value="">—</option>
+                                                            {% for v in vendedores %}
+                                                            <option value="{{ v.id }}" {% if cuenta.vendedor_id == v.id %}selected{% endif %}>{{ v.nombre }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label text-muted small">Días de Duración</label>
+                                                        <input type="number" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="dias_duracion" value="{{ cuenta.dias_duracion }}" min="1" required>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <label class="form-label text-muted small">Costo (Inversión)</label>
+                                                        <input type="number" step="0.01" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="costo" value="{{ cuenta.costo }}" required>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label text-muted small">Moneda Costo</label>
+                                                        <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="moneda_costo">
+                                                            <option value="USDT" {% if cuenta.moneda_costo == 'USDT' %}selected{% endif %}>USDT</option>
+                                                            <option value="BOB" {% if cuenta.moneda_costo == 'BOB' %}selected{% endif %}>BOB</option>
+                                                            <option value="ARS" {% if cuenta.moneda_costo == 'ARS' %}selected{% endif %}>ARS</option>
+                                                            <option value="CLP" {% if cuenta.moneda_costo == 'CLP' %}selected{% endif %}>CLP</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer border-top-0">
+                                                <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-info text-white rounded-3 fw-bold border-0">Guardar Cambios</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Modal Renovar Cuenta -->
+                            <div class="modal fade text-start" id="modalRenovarCuenta{{ cuenta.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                                        <div class="modal-header border-bottom-0">
+                                            <h5 class="modal-title fw-bold text-success"><i class="bi bi-arrow-repeat"></i> Renovar Cuenta</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form action="/cuentas/renovar/{{ cuenta.id }}" method="POST">
+                                            <div class="modal-body">
+                                                <p class="text-muted small mb-3">Renovando la cuenta <strong>{{ cuenta.correo }}</strong> de <strong>{{ cuenta.plataforma }}</strong>.</p>
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small">Días a renovar</label>
+                                                    <input type="number" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="dias_duracion" value="{{ cuenta.dias_duracion }}" min="1" required>
+                                                </div>
+                                                <div class="row g-2 mb-3">
+                                                    <div class="col-6">
+                                                        <label class="form-label text-muted small">Costo de Renovación</label>
+                                                        <input type="number" step="0.01" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="ultimo_costo_renovacion" value="{{ cuenta.ultimo_costo_renovacion or 0 }}" required>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label text-muted small">Moneda</label>
+                                                        <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="ultima_moneda_renovacion">
+                                                            <option value="USDT" {% if cuenta.ultima_moneda_renovacion == 'USDT' %}selected{% endif %}>USDT</option>
+                                                            <option value="BOB" {% if cuenta.ultima_moneda_renovacion == 'BOB' %}selected{% endif %}>BOB</option>
+                                                            <option value="ARS" {% if cuenta.ultima_moneda_renovacion == 'ARS' %}selected{% endif %}>ARS</option>
+                                                            <option value="CLP" {% if cuenta.ultima_moneda_renovacion == 'CLP' %}selected{% endif %}>CLP</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small">Renovado por</label>
+                                                    <select class="form-select text-white border-secondary" style="background-color: #0f1115;" name="vendedor_renovacion_id">
+                                                        <option value="">Selecciona...</option>
+                                                        {% for v in vendedores %}
+                                                        <option value="{{ v.id }}">{{ v.nombre }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer border-top-0">
+                                                <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-success rounded-3 fw-bold border-0">Renovar Cuenta</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Modal Eliminar Cuenta -->
+                            <div class="modal fade text-start" id="modalEliminarCuenta{{ cuenta.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                                        <div class="modal-header border-bottom-0">
+                                            <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Confirmar Eliminación</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            {% if cuenta.id in cuentas_con_ventas %}
+                                                <div class="alert alert-danger border-0" style="background-color: #4A1A1E; color: #FFB4B4;">
+                                                    <i class="bi bi-x-circle-fill"></i> <strong>¡Acción Denegada!</strong><br>
+                                                    No puedes eliminar la cuenta <strong>{{ cuenta.correo }}</strong> porque ya tiene ventas o historiales registrados. <br><br>
+                                                    <em>Consejo: Edita la cuenta y ponla en estado "Inactivo" para que desaparezca de tu stock.</em>
+                                                </div>
+                                            {% else %}
+                                                ¿Estás seguro de que deseas eliminar la cuenta <strong>{{ cuenta.correo }}</strong> de <strong>{{ cuenta.plataforma }}</strong>?<br><br>
+                                                <span class="text-muted small">Esta acción borrará la cuenta de tu base de datos y no se puede deshacer.</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="modal-footer border-top-0">
+                                            <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cerrar</button>
+                                            {% if cuenta.id not in cuentas_con_ventas %}
+                                            <form action="/cuentas/eliminar/{{ cuenta.id }}" method="POST">
+                                                <button type="submit" class="btn btn-danger rounded-3 fw-bold border-0">Sí, Eliminar Cuenta</button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

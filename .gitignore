@@ -1,0 +1,32 @@
+# Entorno virtual Python
+venv/
+.venv/
+env/
+
+# Archivos compilados Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Variables de entorno y secretos locales
+.env
+
+# Bases de datos locales de desarrollo / pruebas
+instance/*.db
+*.sqlite
+*.sqlite3
+
+# Configuración de editores e IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencias Node (si las hubiere)
+node_modules/
+
+# Logs del sistema y OS
+*.log
+.DS_Store
+Thumbs.db

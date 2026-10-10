@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block title %}Finanzas | StreamPanel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-white mb-0">Reporte de Finanzas</h2>
+    <button class="btn btn-primary fw-bold" style="background-color: #5865F2; border: none;">
+        <i class="bi bi-printer-fill me-2"></i> Exportar PDF
+    </button>
+</div>
+
+<!-- ========================================== -->
+<!-- TARJETAS SUPERIORES (Resumen General)      -->
+<!-- ========================================== -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100 rounded-4" style="border: 1px solid #35373C;">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-calendar2-check-fill me-2" style="color: #23A559;"></i> Ingresos Totales (Mes Actual)</h6>
+                <div class="d-flex justify-content-between fw-bold">
+                    <span style="color: #23A559;">{{ totales_mes.USDT|dinero }} USDT</span>
+                    <span>{{ totales_mes.BOB|dinero }} BOB</span>
+                    <span>{{ totales_mes.ARS|dinero }} ARS</span>
+                    <span>{{ totales_mes.CLP|dinero }} CLP</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 rounded-4" style="border: 1px solid #35373C;">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-graph-down-arrow me-2" style="color: #DA373C;"></i> Inversión en Cuentas (Costo)</h6>
+                <div class="d-flex justify-content-between fw-bold">
+                    <span style="color: #DA373C;">{{ inversion.USDT|dinero }} USDT</span>
+                    <span>{{ inversion.BOB|dinero }} BOB</span>
+                    <span>{{ inversion.ARS|dinero }} ARS</span>
+                    <span>{{ inversion.CLP|dinero }} CLP</span>
+                </div>
+                <div class="mt-2 small" style="color: #8b949e;">
+                    {% for nom, inv in inversion_por_vendedor.items() %}
+                    <span class="d-block"><span style="color: #DBDEE1;">{{ nom }}:</span>
+                        {% for moneda, monto in inv.items() %}
+                        {% if monto > 0 %}{{ monto|dinero }} {{ moneda }} {% endif %}
+                        {% endfor %}
+                    </span>
+                    {% endfor %}
+                </div>
+                <div class="mt-1 text-center" style="font-size: 0.65rem; color: #8b949e;">Costo del stock activo por vendedor.</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 rounded-4" style="border: 1px solid #35373C;">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-bank me-2" style="color: #00A8FC;"></i> Histórico (Desde siempre)</h6>
+                <div class="d-flex justify-content-between fw-bold">
+                    <span style="color: #00A8FC;">{{ totales_historicos.USDT|dinero }} USDT</span>
+                    <span>{{ totales_historicos.BOB|dinero }} BOB</span>
+                    <span>{{ totales_historicos.ARS|dinero }} ARS</span>
+                    <span>{{ totales_historicos.CLP|dinero }} CLP</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- NUEVO: REPORTE MENSUAL POR VENDEDOR        -->
+<!-- ========================================== -->
+<h5 class="fw-bold mb-3 mt-2"><i class="bi bi-people-fill me-2" style="color: #5865F2;"></i> Rendimiento Mensual por Vendedor</h5>
+
+<div class="accordion mb-4" id="acordeonFinanzas">
+    {% for mes, vendedores in reporte_historico.items() %}
+    <div class="accordion-item" style="background-color: #0f1115; border: 1px solid #35373C;">
+        <h2 class="accordion-header" id="heading{{ loop.index }}">
+            <button class="accordion-button {% if loop.index > 1 %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" style="background-color: #14171c; color: #DBDEE1; box-shadow: none;">
+                <i class="bi bi-calendar3 me-2"></i> Reporte: <strong>{{ mes }}</strong>
+            </button>
+        </h2>
+        <div id="collapse{{ loop.index }}" class="accordion-collapse collapse {% if loop.index == 1 %}show{% endif %}" data-bs-parent="#acordeonFinanzas">
+            <div class="accordion-body">
+                <div class="row">
+                    {% for nombre_vendedor, datos in vendedores.items() %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100 rounded-4" style="background-color: #0f1115; border: 1px solid #35373C;">
+                            <div class="card-body text-center">
+                                <h6 class="fw-bold mb-1">{{ nombre_vendedor }}</h6>
+                                <span class="badge mb-3" style="background-color: rgba(88, 101, 242, 0.15); color: #5865F2; border: 1px solid rgba(88, 101, 242, 0.4);">{{ datos.perfiles }} perfiles vendidos</span>
+
+                                <div class="d-flex flex-column text-start mx-auto mb-3" style="width: fit-content;">
+                                    <small class="border-bottom border-secondary mb-1" style="color: #8b949e;">Ingresos Cobrados:</small>
+                                    <span class="small fw-bold" style="color: #23A559;"><i class="bi bi-currency-dollar"></i> USDT: {{ datos.ingresos.USDT|dinero }}</span>
+                                    <span class="small fw-bold"><i class="bi bi-cash"></i> BOB: {{ datos.ingresos.BOB|dinero }}</span>
+                                    <span class="small fw-bold"><i class="bi bi-cash"></i> ARS: {{ datos.ingresos.ARS|dinero }}</span>
+                                    <span class="small fw-bold"><i class="bi bi-cash"></i> CLP: {{ datos.ingresos.CLP|dinero }}</span>
+                                </div>
+
+                                <div class="d-flex flex-column text-start mx-auto" style="width: fit-content;">
+                                    <small class="border-bottom border-secondary mb-1" style="color: #8b949e;">Costo Consumido:</small>
+                                    <span class="small fw-bold" style="color: #DA373C;"><i class="bi bi-graph-down-arrow"></i> USDT: {{ datos.costos.USDT|dinero }}</span>
+                                    <span class="small fw-bold" style="color: #DA373C;"><i class="bi bi-graph-down-arrow"></i> BOB: {{ datos.costos.BOB|dinero }}</span>
+                                    <span class="small fw-bold" style="color: #DA373C;"><i class="bi bi-graph-down-arrow"></i> ARS: {{ datos.costos.ARS|dinero }}</span>
+                                    <span class="small fw-bold" style="color: #DA373C;"><i class="bi bi-graph-down-arrow"></i> CLP: {{ datos.costos.CLP|dinero }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ========================================== -->
+<!-- HISTORIAL DE VENTAS Y COBROS (TABLA)       -->
+<!-- ========================================== -->
+
+<!-- Buscador Real (Backend) -->
+<form method="GET" action="/finanzas" class="card mb-4" style="background-color: #0f1115; border: 1px solid #35373C;">
+    <div class="card-body p-2 d-flex gap-2">
+        <input type="text" name="q" value="{{ query }}" class="form-control bg-transparent border-0 text-white shadow-none" placeholder="Buscar transacción por cliente, vendedor o plataforma...">
+        <button type="submit" class="btn btn-primary d-none">Buscar</button>
+    </div>
+</form>
+
+<div class="rounded-3 mb-4" style="background-color: #0f1115; border: 1px solid #35373C; overflow: hidden;">
+    <div class="pt-3 pb-2 px-4" style="border-bottom: 1px solid #35373C;">
+        <h6 class="fw-bold mb-0"><i class="bi bi-receipt-cutoff me-2" style="color: #8b949e;"></i> Historial de Ventas y Cobros</h6>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="table table-hover table-borderless align-middle mb-0">
+            <thead style="background-color: #0f1115;">
+                <tr>
+                    <th class="ps-4 py-3">Fecha</th>
+                    <th class="py-3">Cliente</th>
+                    <th class="py-3">Servicio</th>
+                    <th class="py-3">Vendedor</th>
+                    <th class="pe-4 py-3 text-end">Monto Pagado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Iterar los resultados paginados desde el backend -->
+                {% for venta in transacciones_paginadas.items %}
+                <tr style="border-bottom: 1px solid #1c2128;">
+                    <td class="ps-4 small" style="color: #8b949e;">{{ venta.fecha_inicio.strftime('%d/%m/%Y') }}</td>
+                    <td class="fw-bold">{{ venta.cliente.nombre }}</td>
+                    <td style="color: #5865F2;">{{ venta.cuenta.plataforma }}</td>
+                    <td>
+                        <span class="badge" style="background-color: #14171c; border: 1px solid #35373C; color: #DBDEE1;">
+                            <i class="bi bi-person-fill"></i> {{ venta.vendedor.nombre }}
+                        </span>
+                    </td>
+                    <td class="pe-4 text-end fw-bold {% if venta.moneda == 'USDT' %}text-success{% else %}text-white{% endif %}" {% if venta.moneda == 'USDT' %}style="color: #23A559 !important;"{% endif %}>
+                        {{ venta.precio|dinero }} {{ venta.moneda }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-4" style="color: #8b949e;">No se encontraron transacciones.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- CONTROLES DE PAGINACIÓN                                        -->
+<!-- ============================================================== -->
+{% if transacciones_paginadas.pages > 1 %}
+<div class="mt-4 mb-5 d-flex justify-content-center align-items-center gap-3">
+    {% if transacciones_paginadas.has_prev %}
+        <a href="{{ url_for('vista_finanzas', page=transacciones_paginadas.prev_num, q=query) }}" class="btn btn-outline-light" style="background-color: #14171c; border: 1px solid #35373C;">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </a>
+    {% else %}
+        <button class="btn btn-outline-secondary disabled" style="background-color: #0f1115; border: 1px solid #35373C;">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </button>
+    {% endif %}
+    
+    <span class="text-muted fw-bold">Página {{ transacciones_paginadas.page }} de {{ transacciones_paginadas.pages }}</span>
+    
+    {% if transacciones_paginadas.has_next %}
+        <a href="{{ url_for('vista_finanzas', page=transacciones_paginadas.next_num, q=query) }}" class="btn btn-outline-light" style="background-color: #14171c; border: 1px solid #35373C;">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </a>
+    {% else %}
+        <button class="btn btn-outline-secondary disabled" style="background-color: #0f1115; border: 1px solid #35373C;">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </button>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

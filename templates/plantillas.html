@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Plantillas de WhatsApp | StreamPanel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-white">Plantillas de WhatsApp</h2>
+</div>
+
+<div class="alert border-0 rounded-4" style="background-color: #14171c; border: 1px solid #35373C !important; color: #DBDEE1;">
+    <h6 class="fw-bold" style="color: #5865F2;"><i class="bi bi-magic"></i> Etiquetas Mágicas</h6>
+    <p class="small mb-0" style="color: #8b949e;">Usa estas etiquetas exactas (con los corchetes incluidos) en tus textos. El sistema las reemplazará automáticamente al momento de enviar el WhatsApp:</p>
+    <div class="mt-2 small fw-bold" style="color: #E5B531;">
+        [CLIENTE] | [PLATAFORMA] | [CORREO] | [CONTRASENA] | [PERFIL] | [PIN] | [VENCIMIENTO] | [PRECIO] | [MONEDA]
+    </div>
+</div>
+
+<!-- Usamos col-md-6 para crear un grid de 2x2 perfecto -->
+<div class="row">
+    {% for plantilla in plantillas %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 rounded-4" style="border: 1px solid #35373C;">
+            <div class="card-header pt-3 pb-2" style="background-color: #14171c; border-bottom: 1px solid #35373C;">
+                <h6 class="fw-bold mb-0">
+                    {% if plantilla.tipo == 'entrega_streaming' %}
+                        <i class="bi bi-play-btn-fill me-2" style="color: #00A8FC;"></i> Entrega: Streaming
+                    {% elif plantilla.tipo == 'entrega_iptv_1' %}
+                        <i class="bi bi-tv-fill me-2" style="color: #E5B531;"></i> Entrega: IPTV 1
+                    {% elif plantilla.tipo == 'entrega_iptv_2' %}
+                        <i class="bi bi-tv-fill me-2" style="color: #DA373C;"></i> Entrega: IPTV 2
+                    {% elif plantilla.tipo == 'recordatorio' %}
+                        <i class="bi bi-bell-fill me-2" style="color: #8b949e;"></i> Recordatorio de Pago
+                    {% else %}
+                        <i class="bi bi-file-text-fill me-2"></i> {{ plantilla.tipo }}
+                    {% endif %}
+                </h6>
+            </div>
+            <div class="card-body">
+                <form action="/plantillas/editar/{{ plantilla.id }}" method="POST">
+                    <textarea class="form-control border-secondary mb-3" style="min-height: 200px; resize: none;" name="mensaje" required>{{ plantilla.mensaje }}</textarea>
+                    
+                    <div class="text-end">
+                        <button type="submit" class="btn fw-bold rounded-3" style="background-color: #5865F2; border: none;">Guardar Plantilla</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

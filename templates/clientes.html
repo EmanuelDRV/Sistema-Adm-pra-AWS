@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block title %}Clientes | StreamPanel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-white">Directorio de Clientes</h2>
+</div>
+
+<!-- Buscador Real (Backend) -->
+<form method="GET" action="/clientes" class="card mb-4" style="background-color: #0f1115; border: 1px solid #35373C;">
+    <div class="card-body p-2 d-flex gap-2">
+        <input type="text" name="q" value="{{ query }}" class="form-control bg-transparent border-0 text-white shadow-none" placeholder="Buscar cliente por nombre o número...">
+        <button type="submit" class="btn btn-primary d-none">Buscar</button>
+    </div>
+</form>
+
+<div class="row" id="contenedorClientes">
+    <!-- Bucle optimizado con Paginación -->
+    {% for cliente in clientes_paginados.items %}
+    <div class="col-12 col-md-6 col-lg-4 mb-4 fila-cliente">
+        <div class="card h-100 rounded-4" style="border: 1px solid #35373C;">
+            <div class="card-body" style="background-color: #14171c;">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="rounded-circle text-white d-flex justify-content-center align-items-center" style="width: 50px; height: 50px; font-size: 1.5rem; background-color: #23A559;">
+                        <i class="bi bi-person-fill"></i>
+                    </div>
+                    <div class="ms-3">
+                        <h5 class="fw-bold mb-0">{{ cliente.nombre }}</h5>
+                        <small style="color: #8b949e;"><i class="bi bi-whatsapp" style="color: #23A559;"></i> {{ cliente.telefono_original }}</small>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <!-- BOTÓN DE HISTORIAL -->
+                    <button class="btn btn-sm rounded-3 flex-grow-1 border-0" style="background-color: rgba(0, 168, 252, 0.1); color: #00A8FC;" data-bs-toggle="modal" data-bs-target="#modalHistorial{{ cliente.id }}">
+                        <i class="bi bi-clock-history"></i> Historial
+                    </button>
+                    <!-- BOTÓN EDITAR -->
+                    <button class="btn btn-sm rounded-3 flex-grow-1 p-2 border-0" style="background-color: rgba(88, 101, 242, 0.1); color: #5865F2;" data-bs-toggle="modal" data-bs-target="#modalEditarCliente{{ cliente.id }}">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <!-- BOTÓN ELIMINAR -->
+                    <button class="btn btn-sm rounded-3 p-2 border-0" style="background-color: rgba(218, 55, 60, 0.1); color: #DA373C;" data-bs-toggle="modal" data-bs-target="#modalEliminarCliente{{ cliente.id }}">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTORIAL DEL CLIENTE -->
+    <div class="modal fade text-start" id="modalHistorial{{ cliente.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-clock-history text-info"></i> Historial de Compras: {{ cliente.nombre }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="max-height: 60vh; overflow-y: auto;">
+                    <table class="table table-hover table-borderless align-middle mb-0 text-white">
+                        <thead style="background-color: #0f1115; position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th class="ps-4 text-muted small">Servicio / Perfil</th>
+                                <th class="text-muted small">Fecha Vencimiento</th>
+                                <th class="text-muted small">Vendedor</th>
+                                <th class="pe-4 text-end text-muted small">Monto Pagado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for venta in cliente.ventas|sort(attribute='fecha_vencimiento', reverse=True) %}
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="text-primary fw-bold">{{ venta.cuenta.plataforma }}</span><br>
+                                    <small class="text-muted">Perfil: {{ venta.nombre_perfil }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge {% if venta.fecha_vencimiento < current_time %}bg-danger{% else %}bg-success{% endif %}">
+                                        {{ venta.fecha_vencimiento.strftime('%d/%m/%Y') }}
+                                    </span>
+                                </td>
+                                <td><span class="badge bg-secondary">{{ venta.vendedor.nombre }}</span></td>
+                                <td class="pe-4 text-end fw-bold text-success">{{ venta.precio }} {{ venta.moneda }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-5">
+                                    Este cliente aún no tiene ventas registradas en su historial.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR CLIENTE -->
+    <div class="modal fade text-start" id="modalEditarCliente{{ cliente.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-info"></i> Editar Cliente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/clientes/editar/{{ cliente.id }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Nombre del Cliente</label>
+                            <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="nombre" value="{{ cliente.nombre }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Número de WhatsApp</label>
+                            <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="telefono_original" value="{{ cliente.telefono_original }}" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0">
+                        <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-info text-white rounded-3 fw-bold border-0" style="background-color: #00A8FC;">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ELIMINAR CLIENTE -->
+    <div class="modal fade text-start" id="modalEliminarCliente{{ cliente.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% if cliente.ventas %}
+                        <div class="alert alert-danger border-0" style="background-color: #4A1A1E; color: #FFB4B4;">
+                            <i class="bi bi-x-circle-fill"></i> <strong>¡Acción Denegada!</strong><br>
+                            No puedes eliminar a <strong>{{ cliente.nombre }}</strong> porque tiene un historial de compras.
+                        </div>
+                    {% else %}
+                        ¿Estás seguro de que deseas eliminar a <strong>{{ cliente.nombre }}</strong> de tu directorio?
+                    {% endif %}
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cerrar</button>
+                    {% if not cliente.ventas %}
+                    <form action="/clientes/eliminar/{{ cliente.id }}" method="POST">
+                        <button type="submit" class="btn btn-danger rounded-3 fw-bold border-0">Sí, Eliminar</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center text-muted py-5">
+        <i class="bi bi-person-lines-fill fs-1 d-block mb-3"></i>
+        No se encontraron clientes registrados.
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ============================================================== -->
+<!-- CONTROLES DE PAGINACIÓN                                        -->
+<!-- ============================================================== -->
+{% if clientes_paginados.pages > 1 %}
+<div class="mt-4 mb-5 d-flex justify-content-center align-items-center gap-3">
+    {% if clientes_paginados.has_prev %}
+        <a href="{{ url_for('vista_clientes', page=clientes_paginados.prev_num, q=query) }}" class="btn btn-outline-light" style="background-color: #14171c; border: 1px solid #35373C;">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </a>
+    {% else %}
+        <button class="btn btn-outline-secondary disabled" style="background-color: #0f1115; border: 1px solid #35373C;">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </button>
+    {% endif %}
+    
+    <span class="text-muted fw-bold">Página {{ clientes_paginados.page }} de {{ clientes_paginados.pages }}</span>
+    
+    {% if clientes_paginados.has_next %}
+        <a href="{{ url_for('vista_clientes', page=clientes_paginados.next_num, q=query) }}" class="btn btn-outline-light" style="background-color: #14171c; border: 1px solid #35373C;">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </a>
+    {% else %}
+        <button class="btn btn-outline-secondary disabled" style="background-color: #0f1115; border: 1px solid #35373C;">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </button>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

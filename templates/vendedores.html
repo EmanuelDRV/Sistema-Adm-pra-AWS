@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Vendedores | StreamPanel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-white">Gestión de Vendedores</h2>
+    <button class="btn btn-success rounded-3 fw-bold" style="background-color: #23A559; border: none;" data-bs-toggle="modal" data-bs-target="#modalNuevoVendedor">
+        <i class="bi bi-person-plus-fill"></i> + Nuevo Vendedor
+    </button>
+</div>
+
+<div class="row">
+    {% for vendedor in vendedores %}
+    <div class="col-12 col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 rounded-4" style="border: 1px solid #35373C;">
+            <div class="card-body" style="background-color: #14171c;">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="rounded-circle text-white d-flex justify-content-center align-items-center" style="width: 50px; height: 50px; font-size: 1.5rem; background-color: #5865F2;">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                    <div class="ms-3">
+                        <h5 class="fw-bold mb-0">{{ vendedor.nombre }}</h5>
+                        <small style="color: #8b949e;"><i class="bi bi-telephone-fill"></i> {{ vendedor.contacto }}</small>
+                    </div>
+                </div>
+                
+                <div class="p-2 rounded-3 text-center mb-3" style="background-color: #0f1115; border: 1px solid #35373C;">
+                    <span class="small d-block" style="color: #8b949e;">Ventas Registradas</span>
+                    <span class="fw-bold fs-5" style="color: #23A559;">{{ vendedor.ventas|length }}</span>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm rounded-3 flex-grow-1 p-2 border-0" style="background-color: rgba(88, 101, 242, 0.1); color: #5865F2;" data-bs-toggle="modal" data-bs-target="#modalEditarVendedor{{ vendedor.id }}">
+                        <i class="bi bi-pencil-fill"></i> Editar
+                    </button>
+                    <!-- Solo permitimos abrir el modal de borrar si no tiene ventas -->
+                    <button class="btn btn-sm rounded-3 p-2 border-0" style="background-color: rgba(218, 55, 60, 0.1); color: #DA373C;" data-bs-toggle="modal" data-bs-target="#modalEliminarVendedor{{ vendedor.id }}">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Vendedor -->
+    <div class="modal fade text-start" id="modalEditarVendedor{{ vendedor.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-info"></i> Editar Vendedor</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/vendedores/editar/{{ vendedor.id }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Nombre del Vendedor</label>
+                            <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="nombre" value="{{ vendedor.nombre }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Contacto / Referencia</label>
+                            <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="contacto" value="{{ vendedor.contacto }}" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0">
+                        <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-info text-white rounded-3 fw-bold" style="background-color: #00A8FC; border: none;">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Eliminar Vendedor -->
+    <div class="modal fade text-start" id="modalEliminarVendedor{{ vendedor.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% if vendedor.ventas %}
+                        <div class="alert alert-danger border-0" style="background-color: #4A1A1E; color: #FFB4B4;">
+                            <i class="bi bi-x-circle-fill"></i> <strong>¡Acción Denegada!</strong><br>
+                            No puedes eliminar a <strong>{{ vendedor.nombre }}</strong> porque tiene {{ vendedor.ventas|length }} venta(s) registrada(s) en el sistema.
+                        </div>
+                    {% else %}
+                        ¿Estás seguro de que deseas eliminar al vendedor <strong>{{ vendedor.nombre }}</strong>? Esta acción no se puede deshacer.
+                    {% endif %}
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cerrar</button>
+                    {% if not vendedor.ventas %}
+                    <form action="/vendedores/eliminar/{{ vendedor.id }}" method="POST">
+                        <button type="submit" class="btn btn-danger rounded-3 fw-bold border-0">Sí, Eliminar Vendedor</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center text-muted py-5">
+        <i class="bi bi-people-fill fs-1 d-block mb-3"></i>
+        Aún no hay vendedores registrados.
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Nuevo Vendedor (Fuera del Bucle) -->
+<div class="modal fade text-start" id="modalNuevoVendedor" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: #14171c; color: #DBDEE1;">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-person-plus text-success"></i> Registrar Nuevo Vendedor</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/vendedores/nuevo" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Nombre del Vendedor</label>
+                        <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="nombre" required placeholder="Ej. Ana Pérez">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Contacto / Referencia</label>
+                        <input type="text" class="form-control text-white border-secondary" style="background-color: #0f1115;" name="contacto" required placeholder="Ej. WhatsApp o Red Social">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success rounded-3 fw-bold" style="background-color: #23A559; border: none;">Guardar Vendedor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

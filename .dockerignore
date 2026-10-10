@@ -1,0 +1,11 @@
+# flyctl launch added from venv/.gitignore
+# Created by venv; see https://docs.python.org/3/library/venv.html
+venv
+__pycache__/**/*
+*.pyc
+fly.toml
+# DB local (producción usa PostgreSQL vía DATABASE_URL)
+instance/*.db
+# Backup del dump de la BD real (no debe subirse a la imagen)
+backup db real/
+cosas xd.txt
