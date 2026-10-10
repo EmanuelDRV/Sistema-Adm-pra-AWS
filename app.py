@@ -313,29 +313,36 @@ def dashboard():
 def vista_cuentas():
     reconciliar_cuentas_vencidas()
     query = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    
     # OPTIMIZACIÓN: eager-load de comprador/renovador (evita 2 consultas lazy por fila)
+    base_query = Cuenta.query.options(
+        joinedload(Cuenta.comprador),
+        joinedload(Cuenta.renovador)
+    )
+
     if query:
         termino = f"%{query}%"
-        cuentas = Cuenta.query.options(
-            joinedload(Cuenta.comprador),
-            joinedload(Cuenta.renovador)
-        ).filter(
+        base_query = base_query.filter(
             or_(
                 Cuenta.correo.ilike(termino),
                 Cuenta.plataforma.ilike(termino)
             )
-        ).order_by(Cuenta.estado.asc()).all()
-    else:
-        cuentas = Cuenta.query.options(
-            joinedload(Cuenta.comprador),
-            joinedload(Cuenta.renovador)
-        ).order_by(Cuenta.estado.asc()).all()
+        )
+        
+    # Ordenar por tipo, luego estado y plataforma
+    cuentas_paginadas = base_query.order_by(
+        Cuenta.tipo.asc(),
+        Cuenta.estado.asc(), 
+        Cuenta.plataforma.asc()
+    ).paginate(page=page, per_page=25, error_out=False)
+
     vendedores = Vendedor.query.order_by(Vendedor.nombre.asc()).all()
     # OPTIMIZACIÓN: un solo query para saber qué cuentas tienen ventas (antes: 1 lazy por fila)
     cuentas_con_ventas = set(
         fila[0] for fila in db.session.query(Venta.cuenta_id).distinct().all()
     )
-    return render_template('cuentas.html', cuentas=cuentas, vendedores=vendedores, query=query, cuentas_con_ventas=cuentas_con_ventas)
+    return render_template('cuentas.html', cuentas_paginadas=cuentas_paginadas, vendedores=vendedores, query=query, cuentas_con_ventas=cuentas_con_ventas)
 
 @app.route('/cuentas/nueva', methods=['POST'])
 def nueva_cuenta():

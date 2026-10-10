@@ -118,7 +118,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if not cuentas %}
+                        {% if not cuentas_paginadas.items %}
                         <tr>
                             <td colspan="7" class="text-center text-muted py-5">
                                 <i class="bi bi-search fs-1 d-block mb-3"></i>
@@ -126,20 +126,22 @@
                             </td>
                         </tr>
                         {% endif %}
-                        <!-- MAGIA DE JINJA: Agrupamos las cuentas por Categoría (tipo) -->
-                        {% for tipo_cuenta, lista_cuentas in cuentas|groupby('tipo') %}
+
+                        {% set ns = namespace(current_tipo='') %}
+                        {% for cuenta in cuentas_paginadas.items %}
                         
                         <!-- Fila separadora de Categoría -->
+                        {% if ns.current_tipo != cuenta.tipo %}
                         <tr style="background-color: #0f1115; border-top: 1px solid #35373C; border-bottom: 1px solid #35373C;">
                             <td colspan="7" class="ps-4 py-2">
                                 <span class="text-info fw-bold text-uppercase" style="letter-spacing: 1px; font-size: 0.8rem;">
-                                    <i class="bi bi-collection-fill me-2"></i> SECCIÓN: {{ tipo_cuenta }}
+                                    <i class="bi bi-collection-fill me-2"></i> SECCIÓN: {{ cuenta.tipo }}
                                 </span>
                             </td>
                         </tr>
+                        {% set ns.current_tipo = cuenta.tipo %}
+                        {% endif %}
 
-                        <!-- Iteramos las cuentas de ESTA categoría (Ordenadas Activas primero) -->
-                        {% for cuenta in lista_cuentas|sort(attribute='estado') %}
                         <tr class="{% if cuenta.estado == 'Inactivo' %}opacity-50{% endif %}">
                             <td class="ps-4">
                                 <span class="fw-bold d-block {% if cuenta.estado == 'Inactivo' %}text-decoration-line-through text-muted{% endif %}">{{ cuenta.plataforma }}</span>
@@ -365,11 +367,38 @@
                         </td>
                     </tr>
                         {% endfor %}
-                        {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
+
+<!-- CONTROLES DE PAGINACIÓN -->
+{% if cuentas_paginadas.pages > 1 %}
+<div class="mt-4 mb-5 d-flex justify-content-center align-items-center gap-3">
+    {% if cuentas_paginadas.has_prev %}
+        <a href="{{ url_for('vista_cuentas', page=cuentas_paginadas.prev_num, q=query) }}" class="btn btn-outline-light" style="background-color: #14171c; border: 1px solid #35373C;">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </a>
+    {% else %}
+        <button class="btn btn-outline-secondary disabled" style="background-color: #0f1115; border: 1px solid #35373C;">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </button>
+    {% endif %}
+    
+    <span class="text-muted fw-bold">Página {{ cuentas_paginadas.page }} de {{ cuentas_paginadas.pages }}</span>
+    
+    {% if cuentas_paginadas.has_next %}
+        <a href="{{ url_for('vista_cuentas', page=cuentas_paginadas.next_num, q=query) }}" class="btn btn-outline-light" style="background-color: #14171c; border: 1px solid #35373C;">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </a>
+    {% else %}
+        <button class="btn btn-outline-secondary disabled" style="background-color: #0f1115; border: 1px solid #35373C;">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </button>
+    {% endif %}
+</div>
+{% endif %}
+
 {% endblock %}
