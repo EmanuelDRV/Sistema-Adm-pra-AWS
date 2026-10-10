@@ -45,6 +45,9 @@ hoy = now.strftime("%Y-%m-%d")
 ctx = app.app_context()
 ctx.push()
 
+# Simulamos un login exitoso en el cliente de prueba para que los requests no sean redirigidos a /login
+client.post('/login', data={'username': 'admin1', 'password': 'secreto1'})
+
 print("\n=== 1. PAGINAS PRINCIPALES (GET) ===")
 paginas = [
     ("/", b"AdmNachtShop"),

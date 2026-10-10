@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 import urllib.parse
@@ -10,6 +11,39 @@ from sqlalchemy import or_
 import re
 
 app = Flask(__name__)
+
+# --- LOGIN Y SEGURIDAD ---
+# Configuramos los usuarios desde las variables de entorno, o usamos unos por defecto
+admin_users_raw = os.getenv('ADMIN_USERS', 'admin1:secreto1,admin2:secreto2,admin3:secreto3')
+ADMIN_USERS = {}
+for par in admin_users_raw.split(','):
+    if ':' in par:
+        u, p = par.split(':', 1)
+        ADMIN_USERS[u.strip()] = p.strip()
+
+@app.before_request
+def require_login():
+    rutas_libres = ['login', 'static']
+    if request.endpoint not in rutas_libres and not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username in ADMIN_USERS and ADMIN_USERS[username] == password:
+            session['logged_in'] = True
+            session['username'] = username
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Usuario o contraseña incorrectos.', 'error')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 # Obtenemos la URL de la base de datos desde las variables de entorno de Fly.io
 # Si no la encuentra (porque estás en tu PC local), usará SQLite por defecto.
